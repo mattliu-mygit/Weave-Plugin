@@ -2,7 +2,7 @@
 
 Trace [Claude Code](https://docs.claude.com/en/docs/claude-code) sessions to [Weights & Biases Weave](https://wandb.ai/site/weave) — as a nested trace you can inspect, filter, and analyze.
 
-> **Status:** early development. Design is settled; `M0` (capture) is implemented. Not yet installable.
+> **Status:** early development. Design is settled; the `M0` capture hook is written (inspector + real-session confirmation still pending). Not yet installable.
 
 ## What it captures
 
@@ -30,11 +30,11 @@ Non-intrusive by design — Claude Code itself is never modified.
 
 Adopters write **zero** lines of code: installing the plugin registers everything. A daemonless OTLP-direct mode is kept as a fallback.
 
-See [DESIGN.md](DESIGN.md) for the full design and [specs/](specs/) for detailed specs.
+See [DESIGN.md](DESIGN.md) for the full design, [specs/](specs/) for detailed specs, and [examples/](examples/) for copy-pasteable config.
 
 ## Roadmap
 
-- [x] **M0** — capture mode (confirm hook payload schema + tool-call correlation)
+- [ ] **M0** — capture mode (hook written; inspector + real-session schema/correlation confirmation pending)
 - [ ] **M1** — sidecar + core trace tree (session / turn / tool)
 - [ ] **M2** — permission / approval / rejection / steering
 - [ ] **M3** — redaction, sampling, WAL, config

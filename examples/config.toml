@@ -1,0 +1,24 @@
+# Example claude-weave config.
+# Consumed by the sidecar starting M1 — NOT used by M0 capture.
+# Copy to ~/.claude/claude-weave/config.toml and edit.
+
+active_harness = "claude-code"        # -> profiles/<name>.toml
+
+[weave]
+entity  = "your-entity"
+project = "claude-code"
+# WANDB_API_KEY is read from the environment — never put secrets in this file.
+enable_wal = true                      # crash-safe queued sends (WEAVE_ENABLE_WAL)
+
+[redaction]
+redact_pii  = false                    # Presidio-based PII scrubbing
+redact_keys = ["api_key", "authorization", "token", "password"]
+
+[sampling]
+session_rate = 1.0                     # fraction of sessions traced (root-only)
+
+[trace]
+granularity = "session"                # "session" = one trace per session; or "turn"
+
+[sidecar]
+idle_shutdown_s = 120                  # exit after this long with no active sessions

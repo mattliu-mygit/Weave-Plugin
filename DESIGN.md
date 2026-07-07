@@ -7,6 +7,7 @@
 - **Normal Weave usage.** `weave.init()` once, warm client for the session → WAL, batching, retry, redaction, sampling all native.
 - **Non-intrusive.** Claude Code is never modified. Hooks are external one-line commands (plugin auto-registers; 0 authored lines). The sidecar is a separate process beside `claude`, not inside it.
 - **Never block, never break.** Hooks do a µs local write and exit 0; all failure swallowed.
+- **Harness-agnostic.** The core runs on canonical events (session/turn/tool/permission); a declarative per-harness **profile** ([specs/02](specs/02-harness-profiles.md)) maps a harness's native events, payload fields, and hook registration. New harness = new profile, no code. Claude Code is the first profile; event names below reflect it.
 
 ## 2. Architecture
 
@@ -98,7 +99,7 @@ If a sidecar is unwanted, hooks POST OTLP protobuf straight to Weave (double-for
 
 ## 14. Milestones
 
-- **M0 — Capture (DONE):** `hook.py` dumps payloads; `tools/inspect_capture.py` reports schema + tool-call-id correlation.
+- **M0 — Capture (in progress):** `hook.py` capture dispatcher is written; the payload inspector (`tools/inspect_capture.py`) and a real-session run to confirm the schema + tool-call-id correlation are still pending.
 - **M1 — Sidecar + core tree:** socket, warm `weave.init`, session/turn/tool spans, cross-process nesting.
 - **M2 — Permission/approval/rejection/steering.**
 - **M3 — Redaction, sampling, WAL, config.**

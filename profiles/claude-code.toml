@@ -1,0 +1,36 @@
+# Harness profile: Claude Code. See specs/02-harness-profiles.md.
+# Field paths are provisional until confirmed by M0 capture (esp. tool_use_id).
+
+[harness]
+name      = "claude-code"
+transport = "stdin-json"
+
+[events]
+SessionStart       = "session_start"
+UserPromptSubmit   = "turn_start"
+PreToolUse         = "tool_pre"
+PostToolUse        = "tool_post"
+PostToolUseFailure = "tool_error"
+PermissionRequest  = "permission_request"
+PermissionDenied   = "permission_denied"
+Stop               = "turn_end"
+SessionEnd         = "session_end"
+
+[fields]
+session_id      = "session_id"
+event_name      = "hook_event_name"
+tool_name       = "tool_name"
+tool_input      = "tool_input"
+tool_output     = "tool_response"
+tool_use_id     = "tool_use_id"
+transcript      = "transcript_path"
+permission_mode = "permission_mode"
+cwd             = "cwd"
+
+[registration]
+kind    = "claude-code-settings"
+command = "claude-weave hook --harness claude-code"
+events  = [
+  "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse",
+  "PostToolUseFailure", "PermissionRequest", "PermissionDenied", "Stop", "SessionEnd",
+]

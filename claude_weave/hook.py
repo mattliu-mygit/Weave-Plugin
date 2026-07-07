@@ -1,21 +1,10 @@
-"""claude-weave hook dispatcher — Milestone 0: capture mode.
+"""claude-weave hook — capture mode (M0).
 
-This is a transparent, zero-dependency capture harness. It is wired to EVERY
-Claude Code hook event and does exactly one thing: record the raw event
-(stdin payload + argv + relevant env) to disk, one file per invocation, so we
-can confirm the payload schema for each event — and, critically, whether a
-stable per-tool-call correlation id exists across PreToolUse / PostToolUse /
-Permission* (the open question in DESIGN.md §7/§11).
+Wired to every harness hook event; writes each raw event to disk so we can
+confirm payload schemas and tool-call correlation before building the tracer.
 
-Non-negotiable guarantees (this runs on every tool call):
-  * Never blocks:      no network, minimal disk I/O, bounded stdin read.
-  * Never breaks:      all failures swallowed; ALWAYS exit 0.
-  * Never decides:     stdout left empty (empty stdout + exit 0 == no-op/allow).
-
-Run standalone (no install needed):
-    python3 /path/to/claude_weave/hook.py --event PreToolUse
-or as a module once packaged:
-    python -m claude_weave.hook
+Invariants (runs on every tool call): never block (bounded stdin read),
+never break (swallow all errors, exit 0), never decide (empty stdout).
 """
 from __future__ import annotations
 
