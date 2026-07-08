@@ -5,7 +5,8 @@ active_harness = "claude-code"        # -> weave_agent_adapter/profiles/<name>.t
 
 [weave]
 entity  = "your-entity"
-project = "claude-code"
+project = "claude-code"                # default project (also the fallback when a session has no cwd)
+project_per_repo = false               # true: trace each repo to its own project (named after the cwd leaf)
 # WANDB_API_KEY is read from the environment, never put secrets in this file.
 enable_disk_fallback = true            # dead-letter log for sends that fail after retries (WEAVE_ENABLE_DISK_FALLBACK)
 

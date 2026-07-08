@@ -91,6 +91,10 @@ def cmd_sidecar(args) -> int:
     if debug_file:
         from .sinks.debug import DebugSink
         sink = DebugSink(debug_file)
+    elif cfg.project_per_repo:
+        from .sinks.weave import WeaveSink
+        from .sinks.routing import RoutingSink
+        sink = RoutingSink(lambda p: WeaveSink(p), default_project=project)
     else:
         from .sinks.weave import WeaveSink
         sink = WeaveSink(project)
@@ -98,7 +102,7 @@ def cmd_sidecar(args) -> int:
     redactor = Redactor(deny_keys=cfg.redact_keys, enabled=cfg.redact_enabled)
     sc = Sidecar(sink, project, transport.SOCKET_PATH, profiles_dir=args.profiles_dir,
                  idle_s=cfg.idle_shutdown_s, redactor=redactor, session_rate=cfg.session_rate,
-                 session_ttl=cfg.session_ttl_s)
+                 session_ttl=cfg.session_ttl_s, project_per_repo=cfg.project_per_repo)
     signal.signal(signal.SIGTERM, lambda *_: sc.stop())
     signal.signal(signal.SIGINT, lambda *_: sc.stop())
     try:

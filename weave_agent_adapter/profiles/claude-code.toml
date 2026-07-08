@@ -22,6 +22,7 @@ SessionEnd         = "session_end"
 
 [fields]
 session_id         = "session_id"
+prompt             = "prompt"              # UserPromptSubmit
 tool_name          = "tool_name"
 tool_input         = "tool_input"
 tool_output        = "tool_response"

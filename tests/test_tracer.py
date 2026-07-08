@@ -73,6 +73,32 @@ def test_permission_allow_inferred_from_post():
     assert e.attributes[NS]["permission_decision"] == "allow"
 
 
+def test_input_captures_prompt():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "add logging"}),
+    ])
+    inp = one(sink, f"{NS}.input")
+    assert inp.inputs["prompt"] == "add logging"
+
+
+def test_project_per_repo_stamps_project_from_cwd():
+    from weave_agent_adapter.profile import load_profile
+    from weave_agent_adapter.sinks.recording import RecordingSink
+    from weave_agent_adapter.tracer import Tracer
+    from weave_agent_adapter.core.model import WireEvent
+    tr = Tracer(load_profile("claude-code"), "default-proj", RecordingSink(),
+                project_per_repo=True)
+    tr.handle(WireEvent(1, "claude-code", "SessionStart", 1.0,
+                        {"session_id": SID, "cwd": "/Users/me/my-repo"}, 1))
+    session = one(tr.sink, f"{NS}.session")
+    assert session.project == "my-repo"           # leaf of cwd, not the default
+    # a session with no cwd falls back to the configured default
+    tr.handle(WireEvent(1, "claude-code", "SessionStart", 2.0, {"session_id": "s2"}, 1))
+    s2 = [c for c in starts(tr.sink) if c.op_name == f"{NS}.session"][1]
+    assert s2.project == "default-proj"
+
+
 def test_midturn_prompt_is_steering():
     tr, sink = run([
         ("SessionStart", {"session_id": SID}),

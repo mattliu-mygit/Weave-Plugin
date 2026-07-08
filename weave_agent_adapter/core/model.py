@@ -130,3 +130,4 @@ class WeaveCall:
     output: Any = None
     attributes: dict = field(default_factory=dict)
     exception: Optional[str] = None         # set for ERROR tool calls
+    project: Optional[str] = None            # set on the session-root call; routes the trace's project

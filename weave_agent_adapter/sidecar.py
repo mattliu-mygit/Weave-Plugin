@@ -23,7 +23,8 @@ ACCEPT_TIMEOUT_S = 0.5
 
 class Sidecar:
     def __init__(self, sink, project, socket_path, profiles_dir=None, idle_s=120.0,
-                 redactor=None, session_rate=1.0, session_ttl=3600.0, sweep_interval=30.0):
+                 redactor=None, session_rate=1.0, session_ttl=3600.0, sweep_interval=30.0,
+                 project_per_repo=False):
         self.sink = sink
         self.project = project
         self.socket_path = socket_path
@@ -31,6 +32,7 @@ class Sidecar:
         self.idle_s = idle_s
         self.redactor = redactor
         self.session_rate = session_rate
+        self.project_per_repo = project_per_repo
         self.session_ttl = session_ttl        # drop sessions idle past this (crash safety)
         self.sweep_interval = sweep_interval
         self.tracers: dict = {}
@@ -42,7 +44,8 @@ class Sidecar:
         tr = self.tracers.get(harness)
         if tr is None:
             tr = Tracer(load_profile(harness, self.profiles_dir), self.project, self.sink,
-                        redactor=self.redactor, session_rate=self.session_rate)
+                        redactor=self.redactor, session_rate=self.session_rate,
+                        project_per_repo=self.project_per_repo)
             self.tracers[harness] = tr
         return tr
 

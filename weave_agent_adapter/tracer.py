@@ -18,6 +18,8 @@ Provisional field names (confirmed/adjusted via M0, and only in the profile):
 from __future__ import annotations
 
 import hashlib
+import os
+import re
 import uuid
 
 from .core.model import (
@@ -37,13 +39,24 @@ def _id() -> str:
 
 class Tracer:
     def __init__(self, profile: Profile, project: str, sink: Sink,
-                 redactor: Redactor = None, session_rate: float = 1.0) -> None:
+                 redactor: Redactor = None, session_rate: float = 1.0,
+                 project_per_repo: bool = False) -> None:
         self.profile = profile
         self.project = project
         self.sink = sink
         self.redactor = redactor or Redactor()
         self.session_rate = session_rate
+        self.project_per_repo = project_per_repo
         self.sessions: dict[str, Session] = {}
+
+    def _project_for(self, cwd) -> str:
+        # per-repo: the working directory's leaf name (the repo folder), sanitized
+        # to Weave's allowed charset; falls back to the configured default project
+        if not self.project_per_repo or not cwd:
+            return self.project
+        leaf = os.path.basename(os.path.normpath(cwd))
+        slug = re.sub(r"[^A-Za-z0-9_.-]", "-", leaf).strip("-")
+        return slug or self.project
 
     def _sampled(self, sid: str) -> bool:
         # deterministic per session_id, so a session is all-in or all-out
@@ -74,15 +87,16 @@ class Tracer:
     def _on_session_start(self, sid, f, at) -> None:
         if sid in self.sessions or not self._sampled(sid):
             return
+        cwd = f.get("cwd")
         s = Session(
-            session_id=sid, trace_id=_id(), root_call_id=_id(), project=self.project,
+            session_id=sid, trace_id=_id(), root_call_id=_id(), project=self._project_for(cwd),
             started_at=at, last_activity=at,
-            permission_mode=f.get("permission_mode"), cwd=f.get("cwd"),
+            permission_mode=f.get("permission_mode"), cwd=cwd,
         )
         self.sessions[sid] = s
         self.sink.start(WeaveCall(
             id=s.root_call_id, trace_id=s.trace_id, op_name=f"{NS}.session",
-            started_at=at, parent_id=None, inputs={"session_id": sid},
+            started_at=at, parent_id=None, inputs={"session_id": sid}, project=s.project,
             attributes={NS: {"kind": "session", "harness": self.profile.name,
                              "permission_mode": s.permission_mode, "cwd": s.cwd}},
         ))
@@ -100,7 +114,7 @@ class Tracer:
             out["incomplete"] = True          # swept: no session_end ever arrived
         self.sink.end(WeaveCall(
             id=s.root_call_id, trace_id=s.trace_id, op_name=f"{NS}.session",
-            started_at=s.started_at, ended_at=at, output=out,
+            started_at=s.started_at, ended_at=at, output=out, project=s.project,
         ))
 
     def sweep(self, now: float, ttl: float) -> int:

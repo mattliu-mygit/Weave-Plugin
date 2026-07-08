@@ -14,7 +14,8 @@ Only the **sidecar** reads `config.toml`. The **hook stays parse-free** (spec 03
 |---|---|---|---|
 | `active_harness` | `WEAVE_AGENT_ADAPTER_HARNESS` | `claude-code` | profile in `weave_agent_adapter/profiles/<name>.toml` (spec 02) |
 | `weave.entity` | `WANDB_ENTITY` |   | Weave entity |
-| `weave.project` | `WEAVE_PROJECT` | `claude-code` | Weave project |
+| `weave.project` | `WEAVE_PROJECT` | `claude-code` | Weave project (default + no-cwd fallback) |
+| `weave.project_per_repo` |   | `false` | trace each repo to its own project (named after the cwd leaf) |
 | `weave.enable_disk_fallback` | `WEAVE_ENABLE_DISK_FALLBACK` | `true` | SDK dead-letter log for sends that fail after retries (not replay-on-restart) |
 | `redaction.enabled` |   | `true` | master switch for our `Redactor` |
 | `redaction.redact_keys` |   | Redactor defaults | extra sensitive keys to deny |
