@@ -14,6 +14,7 @@ Provisional field names (confirmed/adjusted via M0, and only in the profile):
 """
 from __future__ import annotations
 
+import hashlib
 import uuid
 
 from .core.model import (
@@ -32,12 +33,23 @@ def _id() -> str:
 
 
 class Tracer:
-    def __init__(self, profile: Profile, project: str, sink: Sink, redactor: Redactor = None) -> None:
+    def __init__(self, profile: Profile, project: str, sink: Sink,
+                 redactor: Redactor = None, session_rate: float = 1.0) -> None:
         self.profile = profile
         self.project = project
         self.sink = sink
         self.redactor = redactor or Redactor()
+        self.session_rate = session_rate
         self.sessions: dict[str, Session] = {}
+
+    def _sampled(self, sid: str) -> bool:
+        # deterministic per session_id, so a session is all-in or all-out
+        if self.session_rate >= 1.0:
+            return True
+        if self.session_rate <= 0.0:
+            return False
+        h = int.from_bytes(hashlib.md5(sid.encode()).digest()[:4], "big") / 2 ** 32
+        return h < self.session_rate
 
     def handle(self, wire) -> None:
         canonical = self.profile.canonical_event(wire.event)
@@ -57,7 +69,7 @@ class Tracer:
     # ------- session -------
 
     def _on_session_start(self, sid, f, at) -> None:
-        if sid in self.sessions:
+        if sid in self.sessions or not self._sampled(sid):
             return
         s = Session(
             session_id=sid, trace_id=_id(), root_call_id=_id(), project=self.project,

@@ -96,7 +96,7 @@ def cmd_sidecar(args) -> int:
 
     redactor = Redactor(deny_keys=cfg.redact_keys, enabled=cfg.redact_enabled)
     sc = Sidecar(sink, project, transport.SOCKET_PATH, profiles_dir=args.profiles_dir,
-                 idle_s=cfg.idle_shutdown_s, redactor=redactor)
+                 idle_s=cfg.idle_shutdown_s, redactor=redactor, session_rate=cfg.session_rate)
     signal.signal(signal.SIGTERM, lambda *_: sc.stop())
     signal.signal(signal.SIGINT, lambda *_: sc.stop())
     try:
