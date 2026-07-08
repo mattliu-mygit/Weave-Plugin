@@ -93,6 +93,7 @@ class Turn:
     started_at: float
     open: bool = True
     input_text: Optional[str] = None        # prompt (redacted)
+    output_text: Optional[str] = None       # assistant's final message for the turn (redacted)
     tool_calls: dict = field(default_factory=dict)   # correlation_key -> ToolCall
     tool_order: list = field(default_factory=list)   # preserves emission order
     steering: list = field(default_factory=list)

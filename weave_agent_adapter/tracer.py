@@ -146,15 +146,19 @@ class Tracer:
         s.turn_count += 1
         self.sink.start(WeaveCall(
             id=t.call_id, trace_id=s.trace_id, op_name=f"{NS}.turn", started_at=at,
-            parent_id=s.root_call_id, attributes={NS: {"kind": "turn", "index": t.index}},
+            parent_id=s.root_call_id, inputs={"prompt": t.input_text},
+            attributes={NS: {"kind": "turn", "index": t.index}},
         ))
         self._instant(s, t.call_id, f"{NS}.input", at,
                       inputs={"prompt": t.input_text}, attrs={"kind": "input"})
 
     def _on_turn_end(self, sid, f, at) -> None:
         s = self.sessions.get(sid)
-        if s:
-            self._close_turn(s, at)
+        if not s:
+            return
+        if s.current_turn and s.current_turn.open:
+            s.current_turn.output_text = self.redactor.scrub(f.get("assistant_message"))
+        self._close_turn(s, at)
 
     def _close_turn(self, s: Session, at) -> None:
         t = s.current_turn
@@ -167,8 +171,8 @@ class Tracer:
         self.sink.end(WeaveCall(
             id=t.call_id, trace_id=s.trace_id, op_name=f"{NS}.turn",
             started_at=t.started_at, ended_at=at,
-            output={"status": t.status.value, "tool_count": len(t.tool_order),
-                    "had_steering": bool(t.steering)},
+            output={"assistant": t.output_text, "status": t.status.value,
+                    "tool_count": len(t.tool_order), "had_steering": bool(t.steering)},
         ))
 
     # ------- tools -------

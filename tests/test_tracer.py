@@ -73,13 +73,17 @@ def test_permission_allow_inferred_from_post():
     assert e.attributes[NS]["permission_decision"] == "allow"
 
 
-def test_input_captures_prompt():
+def test_turn_captures_prompt_and_assistant_reply():
     tr, sink = run([
         ("SessionStart", {"session_id": SID}),
         ("UserPromptSubmit", {"session_id": SID, "prompt": "add logging"}),
+        ("Stop", {"session_id": SID, "last_assistant_message": "Done, added logging."}),
     ])
-    inp = one(sink, f"{NS}.input")
-    assert inp.inputs["prompt"] == "add logging"
+    turn = one(sink, f"{NS}.turn")
+    assert turn.inputs["prompt"] == "add logging"          # prompt on the turn's input
+    assert end_of(sink, turn.id).output["assistant"] == "Done, added logging."
+    # the input marker still carries the prompt too
+    assert one(sink, f"{NS}.input").inputs["prompt"] == "add logging"
 
 
 def test_project_per_repo_stamps_project_from_cwd():

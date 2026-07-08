@@ -23,6 +23,7 @@ SessionEnd         = "session_end"
 [fields]
 session_id         = "session_id"
 prompt             = "prompt"              # UserPromptSubmit
+assistant_message  = "last_assistant_message"   # Stop (the turn's final reply)
 tool_name          = "tool_name"
 tool_input         = "tool_input"
 tool_output        = "tool_response"

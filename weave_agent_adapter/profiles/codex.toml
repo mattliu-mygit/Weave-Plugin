@@ -36,6 +36,7 @@ transcript         = "transcript_path"
 permission_mode    = "permission_mode"
 cwd                = "cwd"
 prompt             = "prompt"               # UserPromptSubmit (provisional)
+assistant_message  = "last_assistant_message"   # Stop (the turn's final reply)
 agent_id           = "agent_id"
 agent_type         = "agent_type"
 agent_output       = "last_assistant_message"   # SubagentStop
