@@ -1,6 +1,6 @@
 # weave-agent-adapter: Weave tracing for agent harnesses
 
-> v1 design. Implemented so far: M0 capture (see §14).
+> v1 design. Implemented: capture, sidecar + lifecycle, WeaveSink (verified live), redaction, config, sampling, installer, packaging. See §14.
 
 ## 1. Principles
 
@@ -76,13 +76,13 @@ One sidecar (fixed socket + `flock`) multiplexes all sessions: `dict[session_id 
 
 ## 9. Reliability & Weave built-ins
 
-Because the sidecar runs the SDK, we get for free: **WAL** (`WEAVE_ENABLE_WAL=true`, crash-safe restart), **async batching + retry**, **redaction** (`redact_pii`, `redact_keys`), **sampling** (root-only `tracing_sample_rate`). Best-effort tracing without hand-rolling any of it.
+The sidecar runs the SDK, so **async batching, retry, and WAL** (`WEAVE_ENABLE_WAL=true`, crash-safe restart) come for free. **Redaction** and **sampling** are ours (`redact.py`; a per-session hash in the tracer) — the SDK's `redact_keys`/`tracing_sample_rate` only apply to the `@weave.op` path, which we bypass for the low-level call API. Autopatching is disabled (we trace no LLM SDKs).
 
 ## 10. Latency & safety
 
 - On-path per hook ≈ local socket write (µs). Weave I/O is off-path in the sidecar.
 - Hooks always exit 0, empty stdout (no decision), hard timeout on the write.
-- Sidecar `flush()` on shutdown; init tuned once (explicit `entity/project`, `ensure_project_exists=False`, `WEAVE_IMPLICITLY_PATCH_INTEGRATIONS=false`).
+- Sidecar `flush()` on shutdown; `weave.init` runs once with autopatch disabled (`WEAVE_IMPLICITLY_PATCH_INTEGRATIONS=false`), the cost amortized over the sidecar's life.
 
 ## 11. Lifecycle
 
@@ -100,9 +100,9 @@ One static command per event — `weave-agent-adapter hook --harness <h> --event
 
 ## 14. Milestones
 
-- **M0 — Capture (in progress):** `hook.py` capture dispatcher is written; the payload inspector (`tools/inspect_capture.py`) and a real-session run to confirm the schema + tool-call-id correlation are still pending.
-- **M1 — Sidecar + core tree:** socket, warm `weave.init`, session/turn/tool spans, cross-process nesting.
-- **M2 — Permission/approval/rejection/steering.**
-- **M3 — Redaction, sampling, WAL, config.**
-- **M4 — Subagents, compaction, hardening.**
-- **M5 — Plugin + pip packaging.**
+- **M0 — Capture:** ✅ `hook.py` + `tools/inspect_capture.py`. Pending: a real-session run to confirm `tool_use_id`.
+- **M1 — Sidecar + core tree:** ✅ socket, warm `weave.init`, session/turn/tool spans, cross-process nesting, lazy-spawn/singleton/idle. WeaveSink verified live.
+- **M2 — Permission/approval/rejection/steering:** ✅ (as tool attributes + steering spans).
+- **M3 — Redaction, sampling, config; WAL flag:** ✅
+- **M4 — Subagents, compaction, hardening:** pending.
+- **M5 — Packaging + installer:** ✅ pyproject + `install`/`uninstall`. Pending: plugin manifest.

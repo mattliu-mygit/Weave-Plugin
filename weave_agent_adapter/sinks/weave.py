@@ -13,6 +13,7 @@ so batching/retry/WAL are unchanged. `weave` is imported lazily.
 from __future__ import annotations
 
 import datetime
+import os
 
 from ..core.model import WeaveCall
 from ..core.sink import Sink
@@ -24,6 +25,9 @@ def _dt(ts: float) -> datetime.datetime:
 
 class WeaveSink(Sink):
     def __init__(self, project: str):
+        # we trace via the low-level call API, not @weave.op, so integration
+        # autopatching is pure init cost — turn it off.
+        os.environ.setdefault("WEAVE_IMPLICITLY_PATCH_INTEGRATIONS", "false")
         import weave
         from weave.trace_server import trace_server_interface as tsi
 

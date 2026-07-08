@@ -16,8 +16,8 @@ Only the **sidecar** reads `config.toml`. The **hook stays parse-free** (spec 03
 | `weave.entity` | `WANDB_ENTITY` | — | Weave entity |
 | `weave.project` | `WEAVE_PROJECT` | `claude-code` | Weave project |
 | `weave.enable_wal` | `WEAVE_ENABLE_WAL` | `true` | crash-safe queued sends |
-| `redaction.redact_pii` | `WEAVE_REDACT_PII` | `false` | Presidio PII scrubbing |
-| `redaction.redact_keys` | — | `[api_key, authorization, token, password]` | key denylist |
+| `redaction.enabled` | — | `true` | master switch for our `Redactor` |
+| `redaction.redact_keys` | — | Redactor defaults | extra sensitive keys to deny |
 | `sampling.session_rate` | — | `1.0` | fraction of sessions traced (root-only) |
 | `trace.granularity` | — | `session` | `session` (one trace/session) or `turn` |
 | `sidecar.idle_shutdown_s` | — | `120` | idle exit timeout |
