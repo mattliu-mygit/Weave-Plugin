@@ -33,7 +33,7 @@ See [DESIGN.md](DESIGN.md) for the full design, [specs/](specs/) for detailed sp
 
 ## Roadmap
 
-- [ ] **M0** — capture mode (hook written; inspector + real-session schema/correlation confirmation pending)
+- [x] **M0** — capture mode; verified against a real Claude Code session (`tool_use_id` confirmed as the per-call correlation id). Permission-event payloads still to capture interactively.
 - [x] **M1** — sidecar + core trace tree (session / turn / tool)
 - [x] **M2** — permission / approval / rejection / steering
 - [x] **M3** — redaction, sampling, config

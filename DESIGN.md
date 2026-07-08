@@ -62,7 +62,7 @@ _Native event names above are the Claude Code profile ([profiles/claude-code.tom
 
 ## 6. Correlation (in-memory in sidecar)
 
-Match `Pre ↔ Permission ↔ Post` to one tool call: primary = a tool-call id from the payload **if it exists** (open question — **M0 confirms**); fallback = `transcript_path`; last resort = `(tool_name, hash(input))` LIFO.
+Match `Pre ↔ Permission ↔ Post` to one tool call: primary = `tool_use_id` (**M0-confirmed** as a stable per-call id shared Pre/Post — real values like `toolu_01…`); last resort = last still-running tool (LIFO).
 
 ## 7. Approval / steering / rejection
 
@@ -100,7 +100,7 @@ One static command per event — `weave-agent-adapter hook --harness <h> --event
 
 ## 14. Milestones
 
-- **M0 — Capture:** ✅ `hook.py` + `tools/inspect_capture.py`. Pending: a real-session run to confirm `tool_use_id`.
+- **M0 — Capture:** ✅ verified against a real Claude Code 2.1.201 session — `tool_use_id` is a stable per-call id shared Pre/Post (correlation confirmed); `session_id`/`tool_name`/`tool_response`/`cwd`/`permission_mode` as expected; `SubagentStop` carries `agent_type`+`agent_id`, and subagent-interior tools carry the subagent's `agent_id` (→ future: nest them under the subagent). Still provisional: `PermissionRequest`/`PermissionDenied` payloads (bypassed in headless) and `PreCompact.trigger`.
 - **M1 — Sidecar + core tree:** ✅ socket, warm `weave.init`, session/turn/tool spans, cross-process nesting, lazy-spawn/singleton/idle. WeaveSink verified live.
 - **M2 — Permission/approval/rejection/steering:** ✅ (as tool attributes + steering spans).
 - **M3 — Redaction, sampling, config:** ✅

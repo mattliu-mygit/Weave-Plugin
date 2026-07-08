@@ -1,5 +1,6 @@
 # Harness profile: Claude Code. See specs/02-harness-profiles.md.
-# Field paths are provisional until confirmed by M0 capture (esp. tool_use_id).
+# Field paths verified against a real Claude Code 2.1.201 capture (M0), except
+# PermissionRequest/PermissionDenied (bypassed in headless — still provisional).
 
 [harness]
 name      = "claude-code"
@@ -28,8 +29,9 @@ tool_use_id        = "tool_use_id"
 transcript         = "transcript_path"
 permission_mode    = "permission_mode"
 cwd                = "cwd"
-agent_type         = "subagent_type"       # provisional (M0)
-compaction_trigger = "trigger"
+agent_id           = "agent_id"            # set on SubagentStop + subagent-interior tools
+agent_type         = "agent_type"          # SubagentStop, e.g. "Explore"
+compaction_trigger = "trigger"             # PreCompact (provisional — not yet captured)
 
 [registration]
 kind    = "claude-code-settings"

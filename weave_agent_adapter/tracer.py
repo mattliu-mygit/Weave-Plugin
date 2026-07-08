@@ -251,8 +251,10 @@ class Tracer:
             aid, rec = t.subagents.popitem()      # no id match: close most-recent (LIFO)
         if rec is None:
             # stop-only harness (e.g. Claude Code has no SubagentStart): annotate completion
-            self._instant(s, t.call_id, f"{NS}.agent.{f.get('agent_type') or 'agent'}", at,
-                          attrs={"kind": "subagent", "phase": "stop"})
+            atype = f.get("agent_type") or "agent"
+            self._instant(s, t.call_id, f"{NS}.agent.{atype}", at,
+                          attrs={"kind": "subagent", "phase": "stop",
+                                 "agent_type": atype, "agent_id": f.get("agent_id")})
             return
         self.sink.end(WeaveCall(
             id=rec["call_id"], trace_id=s.trace_id, op_name=f"{NS}.agent.{rec['type']}",

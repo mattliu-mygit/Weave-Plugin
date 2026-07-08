@@ -9,6 +9,7 @@
     "PermissionDenied":   [{ "hooks": [{ "type": "command", "command": "python3 /path/to/weave-agent-adapter/weave_agent_adapter/hook.py --event PermissionDenied" }] }],
     "Stop":               [{ "hooks": [{ "type": "command", "command": "python3 /path/to/weave-agent-adapter/weave_agent_adapter/hook.py --event Stop" }] }],
     "SubagentStop":       [{ "hooks": [{ "type": "command", "command": "python3 /path/to/weave-agent-adapter/weave_agent_adapter/hook.py --event SubagentStop" }] }],
+    "PreCompact":         [{ "hooks": [{ "type": "command", "command": "python3 /path/to/weave-agent-adapter/weave_agent_adapter/hook.py --event PreCompact" }] }],
     "SessionEnd":         [{ "hooks": [{ "type": "command", "command": "python3 /path/to/weave-agent-adapter/weave_agent_adapter/hook.py --event SessionEnd" }] }]
   }
 }
