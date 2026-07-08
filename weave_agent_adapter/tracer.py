@@ -89,15 +89,32 @@ class Tracer:
 
     def _on_session_end(self, sid, f, at) -> None:
         s = self.sessions.pop(sid, None)
-        if not s:
-            return
+        if s:
+            self._finalize(s, at)
+
+    def _finalize(self, s: Session, at, incomplete: bool = False) -> None:
         self._close_turn(s, at)
         s.status = SessionStatus.CLOSED
+        out = {"turn_count": s.turn_count, "status": s.status.value}
+        if incomplete:
+            out["incomplete"] = True          # swept: no session_end ever arrived
         self.sink.end(WeaveCall(
             id=s.root_call_id, trace_id=s.trace_id, op_name=f"{NS}.session",
-            started_at=s.started_at, ended_at=at,
-            output={"turn_count": s.turn_count, "status": s.status.value},
+            started_at=s.started_at, ended_at=at, output=out,
         ))
+
+    def sweep(self, now: float, ttl: float) -> int:
+        """Finalize sessions idle past `ttl` (a harness that crashed before
+        session_end), so state can't grow without bound and the trace closes
+        rather than dangling. Returns how many were swept."""
+        stale = [sid for sid, s in self.sessions.items() if now - s.last_activity > ttl]
+        for sid in stale:
+            s = self.sessions.pop(sid)
+            try:
+                self._finalize(s, s.last_activity, incomplete=True)
+            except Exception:
+                pass
+        return len(stale)
 
     # ------- turn -------
 

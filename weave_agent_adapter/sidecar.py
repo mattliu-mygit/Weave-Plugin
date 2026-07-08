@@ -23,7 +23,7 @@ ACCEPT_TIMEOUT_S = 0.5
 
 class Sidecar:
     def __init__(self, sink, project, socket_path, profiles_dir=None, idle_s=120.0,
-                 redactor=None, session_rate=1.0):
+                 redactor=None, session_rate=1.0, session_ttl=3600.0, sweep_interval=30.0):
         self.sink = sink
         self.project = project
         self.socket_path = socket_path
@@ -31,6 +31,8 @@ class Sidecar:
         self.idle_s = idle_s
         self.redactor = redactor
         self.session_rate = session_rate
+        self.session_ttl = session_ttl        # drop sessions idle past this (crash safety)
+        self.sweep_interval = sweep_interval
         self.tracers: dict = {}
         self._stop = threading.Event()
         self._lock_fd = None
@@ -82,13 +84,18 @@ class Sidecar:
         srv.listen(64)
         srv.settimeout(ACCEPT_TIMEOUT_S)
         self._last = time.time()
+        last_sweep = self._last
         try:
             while not self._stop.is_set():
                 try:
                     conn, _ = srv.accept()
                 except socket.timeout:
-                    if time.time() - self._last > self.idle_s:
+                    now = time.time()
+                    if now - self._last > self.idle_s:
                         break            # idle: scale to zero
+                    if now - last_sweep > self.sweep_interval:
+                        self._sweep(now)
+                        last_sweep = now
                     continue
                 except OSError:
                     break
@@ -108,11 +115,20 @@ class Sidecar:
                             self._handle_line(line)
                 self._last = time.time()
         finally:
+            self._sweep(time.time(), ttl=0.0)   # finalize any still-open sessions on exit
             srv.close()
             if os.path.exists(self.socket_path):
                 os.remove(self.socket_path)
             if self._lock_fd:
                 self._lock_fd.close()
+
+    def _sweep(self, now: float, ttl: float = None) -> None:
+        ttl = self.session_ttl if ttl is None else ttl
+        for tr in self.tracers.values():
+            try:
+                tr.sweep(now, ttl)
+            except Exception:
+                pass
 
     def stop(self) -> None:
         self._stop.set()

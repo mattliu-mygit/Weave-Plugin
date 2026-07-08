@@ -1,0 +1,133 @@
+"""Reducer behavior: the event stream → span tree, permissions, sweep."""
+from __future__ import annotations
+
+from conftest import NS, run, starts, ends, one, end_of
+from weave_agent_adapter.redact import Redactor
+
+SID = "s1"
+
+
+def test_session_turn_tool_nesting():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID, "cwd": "/repo"}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "do it"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1",
+                        "tool_input": {"command": "ls"}}),
+        ("PostToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1",
+                         "tool_response": {"stdout": "ok"}}),
+        ("Stop", {"session_id": SID}),
+        ("SessionEnd", {"session_id": SID}),
+    ])
+    session = one(sink, f"{NS}.session")
+    turn = one(sink, f"{NS}.turn")
+    tool = one(sink, f"{NS}.tool.Bash")
+    assert session.parent_id is None
+    assert turn.parent_id == session.id
+    assert tool.parent_id == turn.id
+    # session closed with a turn count
+    assert end_of(sink, session.id).output["turn_count"] == 1
+    assert not tr.sessions            # popped on session_end
+
+
+def test_tool_correlation_by_use_id():
+    # two tools opened before either closes → close must match by tool_use_id
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Read", "tool_use_id": "a"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "b"}),
+        ("PostToolUse", {"session_id": SID, "tool_name": "Read", "tool_use_id": "a",
+                         "tool_response": {"x": 1}}),
+    ])
+    read = one(sink, f"{NS}.tool.Read")
+    assert end_of(sink, read.id) is not None          # 'a' closed
+    bash = one(sink, f"{NS}.tool.Bash")
+    assert end_of(sink, bash.id) is None              # 'b' still open
+
+
+def test_permission_denied_closes_rejected():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1"}),
+        ("PermissionDenied", {"session_id": SID, "tool_use_id": "t1",
+                              "denial_reason": "nope"}),
+    ])
+    tool = one(sink, f"{NS}.tool.Bash")
+    e = end_of(sink, tool.id)
+    attrs = e.attributes[NS]
+    assert attrs["status"] == "rejected"
+    assert attrs["permission_decision"] == "deny"
+    assert attrs["denial_reason"] == "nope"
+
+
+def test_permission_allow_inferred_from_post():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1"}),
+        ("PostToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1",
+                         "tool_response": {"stdout": "ok"}}),
+    ])
+    e = end_of(sink, one(sink, f"{NS}.tool.Bash").id)
+    assert e.attributes[NS]["permission_decision"] == "allow"
+
+
+def test_midturn_prompt_is_steering():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "first"}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "actually, wait"}),
+    ])
+    assert len([c for c in starts(sink) if c.op_name == f"{NS}.turn"]) == 1
+    assert one(sink, f"{NS}.steering")
+
+
+def test_subagent_stop_annotation():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("SubagentStop", {"session_id": SID, "agent_type": "Explore", "agent_id": "a9"}),
+    ])
+    agent = one(sink, f"{NS}.agent.Explore")
+    assert agent.attributes[NS]["agent_type"] == "Explore"
+    assert agent.attributes[NS]["agent_id"] == "a9"
+
+
+def test_compaction_under_session_root():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("PreCompact", {"session_id": SID, "trigger": "auto"}),
+    ])
+    session = one(sink, f"{NS}.session")
+    comp = one(sink, f"{NS}.compaction")
+    assert comp.parent_id == session.id
+    assert comp.attributes[NS]["trigger"] == "auto"
+
+
+def test_sampling_excludes_session():
+    tr, sink = run([("SessionStart", {"session_id": SID})], session_rate=0.0)
+    assert starts(sink) == []
+    assert not tr.sessions
+
+
+def test_sweep_finalizes_stale_session():
+    tr, sink = run([("SessionStart", {"session_id": SID})], t0=1000.0)
+    # last_activity == 1000; sweep well past the ttl
+    swept = tr.sweep(now=1000.0 + 10_000, ttl=60.0)
+    assert swept == 1
+    assert not tr.sessions
+    e = end_of(sink, one(sink, f"{NS}.session").id)
+    assert e.output["incomplete"] is True
+
+
+def test_redaction_applied_to_tool_input():
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1",
+                        "tool_input": {"api_key": "supersecret", "command": "ls"}}),
+    ], redactor=Redactor())
+    tool = one(sink, f"{NS}.tool.Bash")
+    assert tool.inputs["tool_input"]["api_key"] == "[REDACTED]"
+    assert tool.inputs["tool_input"]["command"] == "ls"

@@ -87,7 +87,7 @@ What the SDK gives us on the low-level (`call_start`/`call_end`) path: **native 
 ## 11. Lifecycle
 
 - **Spawn:** `SessionStart` (lazy, singleton). **Shutdown:** idle ~60–120s after last session / empty queue, post-flush.
-- **Crash / no `SessionEnd`:** a periodic sweep drops sessions idle > TTL (frees memory); orphaned open calls are left as-is (best-effort). Undelivered sends are retried in-process; whatever fails lands in the SDK's disk dead-letter log — no automatic replay.
+- **Crash / no `SessionEnd`:** a periodic sweep (`session_ttl_s`) finalizes sessions idle past the TTL — frees memory *and* closes the trace (marked `incomplete`) rather than leaving it dangling; the sidecar also finalizes any still-open sessions on shutdown. Undelivered sends are retried in-process; whatever fails lands in the SDK's disk dead-letter log — no automatic replay.
 - **Subagents:** a harness with explicit start/stop nests a real `agent.<type>` span via `agent_id`; Claude Code has only `SubagentStop`, so completion is annotated (the spawning `Task` already appears as a tool span). **Compaction:** `PreCompact` annotates the session with the trigger.
 
 ## 12. Integration (zero authored lines)

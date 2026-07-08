@@ -21,6 +21,7 @@ Only the **sidecar** reads `config.toml`. The **hook stays parse-free** (spec 03
 | `sampling.session_rate` | — | `1.0` | fraction of sessions traced (root-only) |
 | `trace.granularity` | — | `session` | `session` (one trace/session) or `turn` |
 | `sidecar.idle_shutdown_s` | — | `120` | idle exit timeout |
+| `sidecar.session_ttl_s` | — | `3600` | finalize + drop sessions idle past this (crash safety) |
 | `paths.socket` / `paths.state` | — | under `~/.weave-agent-adapter/` | runtime dirs |
 
 ## Secrets

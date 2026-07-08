@@ -21,3 +21,4 @@ granularity = "session"                # "session" = one trace per session; or "
 
 [sidecar]
 idle_shutdown_s = 120                  # exit after this long with no active sessions
+session_ttl_s   = 3600                 # finalize + drop a session idle this long (crash safety)

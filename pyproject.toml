@@ -17,6 +17,7 @@ dependencies = [
 # The hook path is stdlib-only; only the sidecar needs Weave.
 [project.optional-dependencies]
 sidecar = ["weave>=0.51"]
+dev = ["pytest>=7"]
 
 [project.scripts]
 weave-agent-adapter = "weave_agent_adapter.cli:main"
