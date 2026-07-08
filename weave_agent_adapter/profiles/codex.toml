@@ -12,9 +12,8 @@
 #     on the lazy-open-from-first-interior-tool fallback.
 
 [harness]
-name      = "codex"
-adapter   = "command-hook"
-transport = "stdin-json"
+name    = "codex"
+adapter = "command-hook"          # runs a command per event with the payload as JSON on stdin
 
 [events]
 SessionStart      = "session_start"
@@ -43,8 +42,9 @@ agent_output       = "last_assistant_message"   # SubagentStop
 compaction_trigger = "trigger"              # PreCompact (provisional)
 
 [registration]
-kind    = "codex-hooks"                      # writes ~/.codex/hooks.json
-command = "weave-agent-adapter hook --harness codex"   # installer appends --event <event>
+user_path  = "~/.codex/hooks.json"           # install (default scope)
+local_path = ".codex/hooks.json"             # install --local
+command    = "weave-agent-adapter hook --harness codex"   # installer appends --event <event>
 events  = [
   "SessionStart", "UserPromptSubmit", "PreToolUse", "PermissionRequest",
   "PostToolUse", "SubagentStart", "SubagentStop", "PreCompact", "Stop",

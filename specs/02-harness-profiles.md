@@ -17,14 +17,10 @@ Every harness maps its native events into this fixed vocabulary; it never change
 
 ## 2. Adapters: one per hook *mechanism* (reused across harnesses)
 
-Most hook systems share one shape: *run a command on an event, hand it the data.* They differ only in transport and registration, so one adapter covers the whole family:
+Most hook systems share one shape: *run a command on an event, hand it the event payload as JSON on stdin.* One adapter covers the whole family:
 
-- **`command-hook`** (default), our `weave-agent-adapter hook` dispatcher (spec 03) *is* this adapter. Works for any harness whose hooks invoke a command. Reads the profile's `transport` for how the payload arrives:
-  - `stdin-json`, JSON on stdin (Claude Code)
-  - `argv`, fields as CLI args
-  - `env`, fields in environment variables
-  - `file`, a payload path is passed; read it from disk
-- Exotic mechanisms (in-process plugin callback, HTTP webhook) get their own small adapter, expected to be rare.
+- **`command-hook`** (default), our `weave-agent-adapter hook` dispatcher (spec 03) *is* this adapter. It works for any harness whose hooks invoke a command and pass the payload as JSON on stdin (Claude Code and Codex both do).
+- Exotic mechanisms (payload as argv/env/file, in-process plugin callback, HTTP webhook) would get their own small adapter. None are implemented; stdin JSON is the only mode today, and the common one, so it is assumed rather than configured.
 
 A command-hook harness needs **no new code**, just a profile.
 
@@ -32,9 +28,8 @@ A command-hook harness needs **no new code**, just a profile.
 
 ```toml
 [harness]
-name      = "claude-code"
-adapter   = "command-hook"
-transport = "stdin-json"          # stdin-json | argv | env | file
+name    = "claude-code"
+adapter = "command-hook"          # runs a command per event, payload as JSON on stdin
 
 [events]                          # native event -> canonical action
 SessionStart       = "session_start"
@@ -58,8 +53,9 @@ permission_mode = "permission_mode"
 cwd         = "cwd"
 
 [registration]                    # how the installer wires the harness's hook config
-kind    = "claude-code-settings"
-command = "weave-agent-adapter hook --harness claude-code"  # installer appends --event <event>
+user_path  = "~/.claude/settings.json"     # install (default scope)
+local_path = ".claude/settings.json"       # install --local
+command    = "weave-agent-adapter hook --harness claude-code"  # installer appends --event <event>
 events  = ["SessionStart","UserPromptSubmit","PreToolUse","PostToolUse",
            "PostToolUseFailure","PermissionRequest","PermissionDenied","Stop","SessionEnd"]
 ```
@@ -72,14 +68,14 @@ events  = ["SessionStart","UserPromptSubmit","PreToolUse","PostToolUse",
 
 - **Hook stays dumb** (spec 03): forwards the raw payload; `--harness`/`--event` come from launch args.
 - **Sidecar** loads the profile, maps native event → canonical action, resolves fields via `[fields]` paths.
-- **Installer** reads `[registration].kind` to wire the harness's own hook config, emitting `<command> --event <event>` per event.
+- **Installer** merges `<command> --event <event>` per event into the file named by `[registration].user_path` (or `local_path` with `--local`), preserving other keys. No installer code per harness.
 
 ## Adding a harness
 
-1. **Command-hook mechanism** → write a profile (events, fields, transport, registration). No code.
-2. **New mechanism** → add one adapter, then profiles reuse it.
+1. **Command-hook mechanism** → write a profile (events, fields, registration). No code.
+2. **New delivery mechanism** (payload not on stdin as JSON) → add one adapter, then profiles reuse it.
 
 ## Open
 
-- Each new harness's hook surface (event names, payload schema, registration format), confirm per harness via a capture spike. Claude Code's field paths are provisional until M0.
-- Which transports / registration kinds real GPT-based harnesses need (`argv`? `env`? a `notify`-program path?).
+- Each new harness's hook surface (event names, payload schema, hook-file location), confirm per harness via a capture spike. Claude Code's field paths are provisional until M0.
+- Whether any GPT-based harness delivers payloads off-stdin (`argv`/`env`/a `notify`-program path), which would need a second adapter.

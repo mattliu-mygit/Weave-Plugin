@@ -2,7 +2,7 @@
 
 The single command wired to every event, and how it hands the event to the sidecar. This is the **`command-hook` adapter** (spec 02), it serves any harness whose hooks invoke a command. The hook is dumb: it forwards the raw payload and lets the sidecar normalize via the profile (spec 02).
 
-It reads the payload per the profile's `transport`: `stdin-json` (default, below) reads JSON on stdin; `argv`/`env`/`file` read fields from args, environment, or a passed path instead. Everything downstream is identical.
+It reads the event payload as JSON on stdin. That is the one delivery mode the command-hook adapter implements, and the mode both shipped harnesses use; a harness that delivered payloads another way would need a separate adapter (spec 02).
 
 ## Entrypoint
 

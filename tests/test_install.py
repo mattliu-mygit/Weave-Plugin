@@ -53,6 +53,27 @@ def test_uninstall_removes_only_ours(tmp_path):
     assert cmds == ["someone-elses-hook"]
 
 
+def test_install_resolves_target_from_profile_no_code(tmp_path):
+    # a brand-new harness installs with only a profile: the registration names
+    # its own target path, so no installer code (no target map) is touched.
+    prof_dir = tmp_path / "profiles"
+    prof_dir.mkdir()
+    target = tmp_path / "myh-hooks.json"
+    (prof_dir / "myh.toml").write_text(
+        '[harness]\nname = "myh"\nadapter = "command-hook"\n'
+        '[events]\nSessionStart = "session_start"\nPreToolUse = "tool_pre"\n'
+        "[registration]\n"
+        f'user_path = "{target}"\n'
+        'local_path = ".myh/hooks.json"\n'
+        'command = "weave-agent-adapter hook --harness myh"\n'
+        'events = ["SessionStart", "PreToolUse"]\n'
+    )
+    p = install("myh", user=True, profiles_dir=str(prof_dir))   # no explicit path
+    assert p == str(target)
+    hooks = _read(str(target))["hooks"]
+    assert set(hooks) == {"SessionStart", "PreToolUse"}
+
+
 def test_write_plugin_emits_manifest_and_hooks(tmp_path):
     dest = str(tmp_path / "plugin")
     write_plugin("claude-code", dest)

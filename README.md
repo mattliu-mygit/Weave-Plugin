@@ -69,9 +69,8 @@ To add one, copy a shipped profile as a template ([claude-code.toml](weave_agent
 
 ```toml
 [harness]
-name      = "myharness"
-adapter   = "command-hook"      # the built-in command dispatcher
-transport = "stdin-json"        # payload delivered as JSON on stdin (the supported mode)
+name    = "myharness"
+adapter = "command-hook"        # runs a command per event with the payload as JSON on stdin
 
 [events]                        # native hook event -> canonical action
 SessionStart      = "session_start"
@@ -91,15 +90,16 @@ tool_output = "tool_response"
 tool_use_id = "tool_use_id"     # per-tool-call correlation id, if the harness has one
 cwd         = "cwd"
 
-[registration]                  # how `install` wires the hooks
-kind    = "codex-hooks"         # a supported target (see below)
-command = "weave-agent-adapter hook --harness myharness"
-events  = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"]
+[registration]                  # where and how `install` wires the hooks
+user_path  = "~/.myharness/hooks.json"   # the harness's hook settings file
+local_path = ".myharness/hooks.json"     # project-scoped variant (install --local)
+command    = "weave-agent-adapter hook --harness myharness"
+events     = ["SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"]
 ```
 
 Map only the events your harness emits. Missing ones degrade gracefully: a harness with no session-end event closes sessions via the idle sweep, and one with no pre-tool event synthesizes the span from the completion.
 
-`kind` selects where `install` writes the hook registration. Two targets ship: `claude-code-settings` (`~/.claude/settings.json`) and `codex-hooks` (`~/.codex/hooks.json`). If your harness reads one of those formats, reuse its kind; otherwise add one line to the target map in `install.py`, or skip `install` and wire the printed per-event command into your harness by hand.
+`install` merges the hooks into the file named by `user_path` (or `local_path` with `--local`), preserving any other keys already there; `uninstall` removes only our entries. Any harness whose hook file uses the standard `{"hooks": {event: [...]}}` shape (Claude Code's `settings.json`, Codex's `hooks.json`, and most command-hook systems) works with no installer code changes.
 
 ## License
 
