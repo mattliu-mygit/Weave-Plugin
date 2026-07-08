@@ -1,4 +1,4 @@
-"""claude-weave hook — capture mode (M0).
+"""weave-agent-adapter hook — capture mode (M0).
 
 Wired to every harness hook event; writes each raw event to disk so we can
 confirm payload schemas and tool-call correlation before building the tracer.
@@ -16,7 +16,7 @@ import time
 
 # Captures land outside the repo so they survive and are easy to find.
 CAPTURE_DIR = os.path.expanduser(
-    os.environ.get("CLAUDE_WEAVE_CAPTURE_DIR", "~/.claude/claude-weave/capture")
+    os.environ.get("WEAVE_AGENT_ADAPTER_CAPTURE_DIR", "~/.weave-agent-adapter/capture")
 )
 
 # Hard cap on how long we'll wait for stdin, so a hook can never hang a turn.
@@ -41,7 +41,7 @@ def _detect_event(payload: object, argv: list[str]) -> str:
     for i, a in enumerate(argv):
         if a in ("--event", "-e") and i + 1 < len(argv):
             return argv[i + 1]
-    return os.environ.get("CLAUDE_HOOK_EVENT", "unknown")
+    return os.environ.get("WEAVE_AGENT_ADAPTER_HOOK_EVENT", "unknown")
 
 
 def _safe(s: str) -> str:

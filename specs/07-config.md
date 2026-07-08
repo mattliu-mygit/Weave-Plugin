@@ -4,13 +4,15 @@ Consumed by the sidecar (M1+); the hook needs almost none of it. Example: [`../e
 
 ## Sources & precedence
 
-`env var` > `config.toml` > built-in default. File location: `~/.claude/claude-weave/config.toml` (path via `CLAUDE_WEAVE_CONFIG`).
+`env var` > `config.toml` > built-in default. File location: `~/.weave-agent-adapter/config.toml` (path via `WEAVE_AGENT_ADAPTER_CONFIG`).
+
+Only the **sidecar** reads `config.toml`. The **hook stays parse-free** (spec 03), so its paths (capture dir, socket) arrive via env vars — set by the installer from config, defaulting to a harness-neutral `~/.weave-agent-adapter/`. The runtime dir is deliberately *not* under a harness's own config dir (e.g. `.claude/`).
 
 ## Keys
 
 | Key | Env override | Default | Meaning |
 |---|---|---|---|
-| `active_harness` | `CLAUDE_WEAVE_HARNESS` | `claude-code` | profile in `profiles/<name>.toml` (spec 02) |
+| `active_harness` | `WEAVE_AGENT_ADAPTER_HARNESS` | `claude-code` | profile in `profiles/<name>.toml` (spec 02) |
 | `weave.entity` | `WANDB_ENTITY` | — | Weave entity |
 | `weave.project` | `WEAVE_PROJECT` | `claude-code` | Weave project |
 | `weave.enable_wal` | `WEAVE_ENABLE_WAL` | `true` | crash-safe queued sends |
@@ -19,7 +21,7 @@ Consumed by the sidecar (M1+); the hook needs almost none of it. Example: [`../e
 | `sampling.session_rate` | — | `1.0` | fraction of sessions traced (root-only) |
 | `trace.granularity` | — | `session` | `session` (one trace/session) or `turn` |
 | `sidecar.idle_shutdown_s` | — | `120` | idle exit timeout |
-| `paths.socket` / `paths.state` | — | under `~/.claude/claude-weave/` | runtime dirs |
+| `paths.socket` / `paths.state` | — | under `~/.weave-agent-adapter/` | runtime dirs |
 
 ## Secrets
 

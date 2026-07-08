@@ -7,7 +7,7 @@ One long-lived process per machine, hosting the warm Weave client (spec 01, laye
 Any hook that can't reach the socket may spawn it; in practice the session-start hook does. Sequence:
 
 1. Try to `connect` the socket. Success → send + exit.
-2. Refused → acquire an exclusive `flock` on `~/.claude/claude-weave/sidecar.lock`.
+2. Refused → acquire an exclusive `flock` on `~/.weave-agent-adapter/sidecar.lock`.
    - **Won the lock:** double-fork + `setsid` to detach, `exec` the sidecar, poll until the socket accepts (bounded ~2 s), release lock, then send.
    - **Lost the lock:** another hook is spawning — poll-connect with backoff; if still down past the deadline, spool (spec 03) and exit.
 
@@ -36,7 +36,7 @@ While running, a timer drops sessions idle beyond TTL (no `SessionEnd` arrived �
 
 ## Signals
 
-`SIGTERM`/`SIGINT` → flush, finalize open calls as `incomplete`, exit 0.
+`SIGTERM`/`SIGINT` → flush and exit 0 (open calls left as-is, best-effort).
 
 ## OPEN
 

@@ -1,4 +1,4 @@
-# claude-weave
+# weave-agent-adapter
 
 Trace agent-harness sessions to [Weights & Biases Weave](https://wandb.ai/site/weave) — as a nested trace you can inspect, filter, and analyze. [Claude Code](https://docs.claude.com/en/docs/claude-code) is the first supported harness.
 

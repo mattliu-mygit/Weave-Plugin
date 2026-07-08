@@ -1,6 +1,6 @@
-# Example claude-weave config.
+# Example weave-agent-adapter config.
 # Consumed by the sidecar starting M1 — NOT used by M0 capture.
-# Copy to ~/.claude/claude-weave/config.toml and edit.
+# Copy to ~/.weave-agent-adapter/config.toml and edit.
 
 active_harness = "claude-code"        # -> profiles/<name>.toml
 

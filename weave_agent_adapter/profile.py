@@ -37,8 +37,9 @@ def _dig(obj: Any, dotted: str) -> Any:
 @dataclass
 class Profile:
     name: str
-    transport: str
-    events: dict          # native event -> canonical
+    adapter: str          # hook mechanism, e.g. "command-hook"
+    transport: str        # stdin-json | argv | env | file
+    events: dict          # native event -> canonical action
     fields: dict          # canonical field -> dotted path in payload
     registration: dict
 
@@ -62,6 +63,7 @@ class Profile:
         h = d.get("harness", {})
         return cls(
             name=h.get("name", "unknown"),
+            adapter=h.get("adapter", "command-hook"),
             transport=h.get("transport", "stdin-json"),
             events=dict(d.get("events", {})),
             fields=dict(d.get("fields", {})),

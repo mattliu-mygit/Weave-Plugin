@@ -1,11 +1,11 @@
-# claude-weave specs
+# weave-agent-adapter specs
 
 Detailed specs behind [`../DESIGN.md`](../DESIGN.md). Each is self-contained; `DESIGN.md` stays the high-level map.
 
 | # | Spec | Status |
 |---|---|---|
 | 01 | [Data model](01-data-model.md) — wire event, sidecar state, Weave-call mapping | draft |
-| 02 | [Harness profiles](02-harness-profiles.md) — harness-agnostic event/field/registration mapping | draft |
+| 02 | [Harness profiles & adapters](02-harness-profiles.md) — canonical actions, adapters, event/field mapping | draft |
 | 03 | [Hook & wire protocol](03-wire-protocol.md) — dispatcher, socket, framing, best-effort delivery | draft |
 | 04 | [Sidecar lifecycle](04-sidecar-lifecycle.md) — spawn, singleton, idle shutdown, crash recovery | draft |
 | 05 | [Correlation](05-correlation.md) — `tool_use_id` resolution + fallbacks | draft |

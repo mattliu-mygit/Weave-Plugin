@@ -1,4 +1,4 @@
-# claude-weave: Weave tracing for agent harnesses
+# weave-agent-adapter: Weave tracing for agent harnesses
 
 > v1 design. Implemented so far: M0 capture (see §14).
 
@@ -7,7 +7,7 @@
 - **Normal Weave usage.** `weave.init()` once, warm client for the session → WAL, batching, retry, redaction, sampling all native.
 - **Non-intrusive.** The harness is never modified. Hooks are external one-line commands (plugin auto-registers; 0 authored lines). The sidecar is a separate process beside the harness, not inside it.
 - **Never block, never break.** Hooks do a µs local write and exit 0; all failure swallowed.
-- **Harness-agnostic.** The core runs on canonical events (session/turn/tool/permission); a declarative per-harness **profile** ([specs/02](specs/02-harness-profiles.md)) maps a harness's native events, payload fields, and hook registration. New harness = new profile, no code. Claude Code is the first profile; event names below reflect it.
+- **Harness-agnostic.** The core runs on a fixed set of **canonical actions**; each harness plugs in via an **adapter** (its hook mechanism) + a declarative **profile** (its event/field/registration mapping) — [spec 02](specs/02-harness-profiles.md). Assumes the harness has a hook (or hook-like) system. Command-based hooks reuse one adapter, so most harnesses are profile-only, no code. Claude Code is the first; event names below reflect it.
 
 ## 2. Architecture
 
@@ -29,7 +29,7 @@
 |---|---|
 | Harness source | none |
 | Adopter code | none — plugin ships `hooks/hooks.json`; one static command per event |
-| Runtime footprint | one detached sidecar process (scale-to-zero on idle) + a socket/state dir under `~/.claude/claude-weave/` |
+| Runtime footprint | one detached sidecar process (scale-to-zero on idle) + a socket/state dir under `~/.weave-agent-adapter/` |
 
 ## 4. Span tree
 
@@ -93,7 +93,7 @@ Because the sidecar runs the SDK, we get for free: **WAL** (`WEAVE_ENABLE_WAL=tr
 
 ## 12. Integration (zero authored lines)
 
-One static command per event — `claude-weave hook --harness <h> --event <e>` — where `--event` comes from the profile's `[registration]`; the sidecar maps the native event to a canonical action (spec 02). Ladder: **plugin** (0 lines) → `claude-weave install` (1 command) → paste generated block (~9 entries). No all-events wildcard, so entries are generated per event.
+One static command per event — `weave-agent-adapter hook --harness <h> --event <e>` — where `--event` comes from the profile's `[registration]`; the sidecar maps the native event to a canonical action (spec 02). Ladder: **plugin** (0 lines) → `weave-agent-adapter install` (1 command) → paste generated block (~9 entries). No all-events wildcard, so entries are generated per event.
 
 ## 13. Non-goals (v1)
 

@@ -1,4 +1,4 @@
-"""claude-weave capture inspector (M0).
+"""weave-agent-adapter capture inspector (M0).
 
 Reads the raw hook payloads that `hook.py` dumped during a real session and
 reports, per event, how often it fired and what its payload contains.
@@ -11,7 +11,7 @@ Answers the M0 open questions that gate the profile (spec 02) and correlation
 
 Usage:
     python3 tools/inspect_capture.py [capture_dir]
-    (default ~/.claude/claude-weave/capture, or $CLAUDE_WEAVE_CAPTURE_DIR)
+    (default ~/.weave-agent-adapter/capture, or $WEAVE_AGENT_ADAPTER_CAPTURE_DIR)
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import sys
 from collections import defaultdict
 
 DEFAULT_DIR = os.environ.get(
-    "CLAUDE_WEAVE_CAPTURE_DIR", os.path.expanduser("~/.claude/claude-weave/capture")
+    "WEAVE_AGENT_ADAPTER_CAPTURE_DIR", os.path.expanduser("~/.weave-agent-adapter/capture")
 )
 
 TOOL_EVENTS = {

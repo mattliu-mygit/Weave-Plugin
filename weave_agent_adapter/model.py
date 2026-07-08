@@ -1,4 +1,4 @@
-"""claude-weave data model (spec 01).
+"""weave-agent-adapter data model (spec 01).
 
 Pure dataclasses + enums: the wire event (layer A), the sidecar's in-memory
 state (layer B), and the Weave call each span becomes (layer C). No behavior
@@ -16,13 +16,11 @@ from typing import Any, Optional
 class SessionStatus(str, Enum):
     OPEN = "open"
     CLOSED = "closed"
-    INCOMPLETE = "incomplete"
 
 
 class TurnStatus(str, Enum):
     OPEN = "open"
     CLOSED = "closed"
-    INCOMPLETE = "incomplete"
 
 
 class ToolStatus(str, Enum):
@@ -36,13 +34,6 @@ class Decision(str, Enum):
     PENDING = "pending"
     ALLOW = "allow"
     DENY = "deny"
-
-
-class DecisionSource(str, Enum):
-    USER = "user"
-    HOOK = "hook"
-    AUTO = "auto"
-    UNKNOWN = "unknown"
 
 
 class SteeringKind(str, Enum):
@@ -70,9 +61,7 @@ class Permission:
     call_id: str
     requested_at: Optional[float] = None    # set if a PermissionRequest was seen
     decision: Decision = Decision.PENDING
-    source: DecisionSource = DecisionSource.UNKNOWN
     reason: Optional[str] = None            # denial_reason / feedback
-    decided_at: Optional[float] = None
 
 
 @dataclass
@@ -121,7 +110,6 @@ class Session:
     started_at: float
     last_activity: float                    # drives idle shutdown
     permission_mode: Optional[str] = None
-    model: Optional[str] = None
     cwd: Optional[str] = None
     status: SessionStatus = SessionStatus.OPEN
     current_turn: Optional[Turn] = None
@@ -134,7 +122,7 @@ class Session:
 class WeaveCall:
     id: str
     trace_id: str                           # == session's trace_id
-    op_name: str                            # e.g. "claude_weave.tool.Bash"
+    op_name: str                            # e.g. "weave_agent_adapter.tool.Bash"
     started_at: float
     parent_id: Optional[str] = None         # None only for the root session
     ended_at: Optional[float] = None

@@ -3,7 +3,8 @@
 
 [harness]
 name      = "claude-code"
-transport = "stdin-json"
+adapter   = "command-hook"
+transport = "stdin-json"          # stdin-json | argv | env | file
 
 [events]
 SessionStart       = "session_start"
@@ -28,7 +29,7 @@ cwd             = "cwd"
 
 [registration]
 kind    = "claude-code-settings"
-command = "claude-weave hook --harness claude-code"  # installer appends --event <event>
+command = "weave-agent-adapter hook --harness claude-code"  # installer appends --event <event>
 events  = [
   "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse",
   "PostToolUseFailure", "PermissionRequest", "PermissionDenied", "Stop", "SessionEnd",

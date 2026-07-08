@@ -28,14 +28,9 @@ class WireEvent:
 
 ## B. Sidecar in-memory state
 
-```python
-@dataclass
-class Sidecar:
-    sessions: dict[str, Session]          # session_id -> Session
-    clients: dict[str, WeaveClient]       # project -> client (usually one)
-    started_at: float
-    last_activity: float                  # drives idle shutdown
+Held by the `Tracer` as `dict[session_id → Session]` — no wrapper class.
 
+```python
 @dataclass
 class Session:
     session_id: str
@@ -43,11 +38,10 @@ class Session:
     root_call_id: str                     # the `session` call
     project: str                          # entity/project
     permission_mode: str | None
-    model: str | None
     cwd: str | None
     started_at: float
-    last_activity: float
-    status: SessionStatus                 # OPEN | CLOSED | INCOMPLETE
+    last_activity: float                  # updated each event; drives idle shutdown
+    status: SessionStatus                 # OPEN | CLOSED
     current_turn: Turn | None
     turn_count: int
 
@@ -62,7 +56,7 @@ class Turn:
     tool_order: list[str]                 # preserves emission order
     steering: list[Steering]
     ended_at: float | None
-    status: TurnStatus                    # OPEN | CLOSED | INCOMPLETE
+    status: TurnStatus                    # OPEN | CLOSED
 
 @dataclass
 class ToolCall:
@@ -82,9 +76,7 @@ class Permission:
     call_id: str
     requested_at: float | None            # set if a PermissionRequest was seen
     decision: Decision                    # PENDING | ALLOW | DENY
-    source: DecisionSource                # USER | HOOK | AUTO | UNKNOWN
     reason: str | None                    # denial_reason / feedback
-    decided_at: float | None
 
 @dataclass
 class Steering:
@@ -99,11 +91,10 @@ class Steering:
 
 | Enum | Values |
 |---|---|
-| `SessionStatus` | `OPEN`, `CLOSED`, `INCOMPLETE` |
-| `TurnStatus` | `OPEN`, `CLOSED`, `INCOMPLETE` |
+| `SessionStatus` | `OPEN`, `CLOSED` |
+| `TurnStatus` | `OPEN`, `CLOSED` |
 | `ToolStatus` | `RUNNING`, `OK`, `ERROR`, `REJECTED` |
 | `Decision` | `PENDING`, `ALLOW`, `DENY` |
-| `DecisionSource` | `USER`, `HOOK`, `AUTO`, `UNKNOWN` |
 | `SteeringKind` | `INTERJECTION`, `DENIAL_FEEDBACK`, `INPUT_REWRITE` |
 
 ---
@@ -118,12 +109,12 @@ class WeaveCall:
     id: str                 # unique call id
     trace_id: str           # == session's trace_id
     parent_id: str | None    # parent call id (None only for root session)
-    op_name: str            # see spec 06; e.g. "claude_weave.tool.Bash"
+    op_name: str            # see spec 06; e.g. "weave_agent_adapter.tool.Bash"
     started_at: float
     ended_at: float | None
     inputs: dict            # span-kind-specific (redacted)
     output: Any | None
-    attributes: dict        # namespaced claude_weave.* metadata
+    attributes: dict        # namespaced weave_agent_adapter.* metadata
     exception: str | None   # set for ERROR tool calls
 ```
 
@@ -131,13 +122,13 @@ class WeaveCall:
 
 | Span (`op_name`) | Built from | Parent |
 |---|---|---|
-| `claude_weave.session` | `Session` | — (root) |
-| `claude_weave.turn` | `Turn` | session |
-| `claude_weave.input` | `Turn.input_text` | turn |
-| `claude_weave.tool.<name>` | `ToolCall` | turn |
-| `claude_weave.permission` | `Permission` | tool |
-| `claude_weave.steering` | `Steering` | turn |
-| `claude_weave.stop` | `Turn` end | turn |
+| `weave_agent_adapter.session` | `Session` | — (root) |
+| `weave_agent_adapter.turn` | `Turn` | session |
+| `weave_agent_adapter.input` | `Turn.input_text` | turn |
+| `weave_agent_adapter.tool.<name>` | `ToolCall` | turn |
+| `weave_agent_adapter.permission` | `Permission` | tool |
+| `weave_agent_adapter.steering` | `Steering` | turn |
+| `weave_agent_adapter.stop` | `Turn` end | turn |
 
 ### Timing rule
 
@@ -145,9 +136,9 @@ OTEL/Weave calls need start+end together, but hook events arrive separately. Rul
 
 ### Key attributes (illustrative; full schema in spec 06)
 
-- session: `permission_mode`, `model`, `cwd`, `turn_count`
+- session: `permission_mode`, `cwd`, `turn_count`
 - tool: `tool_name`, `status`, `duration_s`
-- permission: `decision`, `source`, `reason`, `prompt_shown`
+- permission: `decision`, `reason`, `prompt_shown`
 - steering: `kind`, `related_tool_key`
 
 ---

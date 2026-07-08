@@ -15,16 +15,15 @@ Provisional field names (confirmed/adjusted via M0, and only in the profile):
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from .model import (
-    Decision, DecisionSource, Permission, Session, SessionStatus, Steering,
+    Decision, Permission, Session, SessionStatus, Steering,
     SteeringKind, ToolCall, ToolStatus, Turn, TurnStatus, WeaveCall,
 )
 from .profile import Profile
 from .sink import Sink
 
-NS = "claude_weave"
+NS = "weave_agent_adapter"
 
 
 def _id() -> str:
@@ -49,6 +48,9 @@ class Tracer:
         handler = getattr(self, f"_on_{canonical}", None)
         if handler:
             handler(sid, fields, wire.captured_at)
+        s = self.sessions.get(sid)
+        if s:
+            s.last_activity = wire.captured_at
 
     # ------- session -------
 
@@ -124,8 +126,10 @@ class Tracer:
 
     def _on_tool_pre(self, sid, f, at) -> None:
         s = self.sessions.get(sid)
-        if not s or not s.current_turn:
-            return
+        if s and s.current_turn:
+            self._open_tool(s, f, at)
+
+    def _open_tool(self, s, f, at, partial=False) -> ToolCall:
         t = s.current_turn
         key = f.get("tool_use_id") or f"_synth:{f.get('tool_name')}:{len(t.tool_order)}"
         tc = ToolCall(correlation_key=key, call_id=_id(),
@@ -133,13 +137,16 @@ class Tracer:
                       tool_input=f.get("tool_input") or {}, started_at=at)
         t.tool_calls[key] = tc
         t.tool_order.append(key)
+        attrs = {"kind": "tool", "tool_name": tc.tool_name, "harness": self.profile.name}
+        if partial:
+            attrs["partial"] = True          # harness has no pre-tool hook
         self.sink.start(WeaveCall(
             id=tc.call_id, trace_id=s.trace_id, op_name=f"{NS}.tool.{tc.tool_name}",
             started_at=at, parent_id=t.call_id,
             inputs={"tool_name": tc.tool_name, "tool_input": tc.tool_input},
-            attributes={NS: {"kind": "tool", "tool_name": tc.tool_name,
-                             "harness": self.profile.name}},
+            attributes={NS: attrs},
         ))
+        return tc
 
     def _on_permission_request(self, sid, f, at) -> None:
         s, tc = self._locate_tool(sid, f)
@@ -156,7 +163,7 @@ class Tracer:
         s, tc = self._locate_tool(sid, f)
         if not tc:
             return
-        self._close_permission(s, tc, Decision.DENY, DecisionSource.USER, f.get("denial_reason"), at)
+        self._close_permission(s, tc, Decision.DENY, f.get("denial_reason"), at)
         tc.status = ToolStatus.REJECTED
         tc.ended_at = at
         self.sink.end(WeaveCall(
@@ -173,11 +180,17 @@ class Tracer:
 
     def _finish_tool(self, sid, f, at, ok: bool) -> None:
         s, tc = self._locate_tool(sid, f)
-        if not tc or tc.status != ToolStatus.RUNNING:
+        if not s or not s.current_turn:
+            return
+        if tc is None:
+            # fallback for a bring-your-own harness whose hook system has no
+            # pre-tool event: reconstruct the span from the completion alone
+            tc = self._open_tool(s, f, at, partial=True)
+        elif tc.status != ToolStatus.RUNNING:
             return
         # approval is inferred: a tool that ran was allowed
         if tc.permission and tc.permission.decision == Decision.PENDING:
-            self._close_permission(s, tc, Decision.ALLOW, DecisionSource.USER, None, at)
+            self._close_permission(s, tc, Decision.ALLOW, None, at)
         source = "user" if tc.permission else "auto"
         tc.status = ToolStatus.OK if ok else ToolStatus.ERROR
         tc.ended_at = at
@@ -205,16 +218,16 @@ class Tracer:
                 return s, t.tool_calls[k]
         return s, None
 
-    def _close_permission(self, s, tc, decision, source, reason, at) -> None:
+    def _close_permission(self, s, tc, decision, reason, at) -> None:
         p = tc.permission
         if not p:
             return  # auto-approved: no permission span was opened
-        p.decision, p.source, p.reason, p.decided_at = decision, source, reason, at
+        p.decision, p.reason = decision, reason
         self.sink.end(WeaveCall(
             id=p.call_id, trace_id=s.trace_id, op_name=f"{NS}.permission",
             started_at=p.requested_at or at, ended_at=at,
             output={"reason": reason} if reason else None,
-            attributes={NS: {"decision": decision.value, "source": source.value}},
+            attributes={NS: {"decision": decision.value}},
         ))
 
     def _emit_steering(self, s, at, kind, text=None) -> None:

@@ -1,11 +1,13 @@
 # Spec 03 — Hook → sidecar: dispatcher & wire protocol
 
-The single command wired to every event, and how it hands the event to the sidecar. The hook is dumb: it forwards the raw payload and lets the sidecar normalize via the profile (spec 02).
+The single command wired to every event, and how it hands the event to the sidecar. This is the **`command-hook` adapter** (spec 02) — it serves any harness whose hooks invoke a command. The hook is dumb: it forwards the raw payload and lets the sidecar normalize via the profile (spec 02).
+
+It reads the payload per the profile's `transport`: `stdin-json` (default, below) reads JSON on stdin; `argv`/`env`/`file` read fields from args, environment, or a passed path instead. Everything downstream is identical.
 
 ## Entrypoint
 
 ```
-claude-weave hook --harness NAME --event NAME
+weave-agent-adapter hook --harness NAME --event NAME
 ```
 
 Both args come from the profile's `[registration]` (spec 02) — so the hook never parses the payload to learn its harness or event. The same static command backs every event.
@@ -28,7 +30,7 @@ It parses **nothing** out of the payload — `session_id`, `tool_name`, etc. are
 
 ## Transport
 
-- **Unix domain socket**, `SOCK_STREAM`, at `~/.claude/claude-weave/sidecar.sock` (overridable). Local only, mode `0600`.
+- **Unix domain socket**, `SOCK_STREAM`, at `~/.weave-agent-adapter/sidecar.sock` (overridable). Local only, mode `0600`.
 - STREAM (not DGRAM) so large payloads (big tool outputs) aren't capped by datagram limits.
 
 ## Framing
@@ -43,7 +45,7 @@ Newline-delimited JSON — one `WireEvent` per line. The hook `connect → write
 
 - The **session-start hook waits** until the socket is accepting before returning (spec 04), so later hooks in the session find the sidecar up.
 - If a connect/write still fails (e.g. sidecar crashed mid-session) → swallow, exit 0. v1 is best-effort: dropping the occasional event is acceptable.
-- **Optional thin spool** (`~/.claude/claude-weave/spool/<session>.jsonl`) drained by the sidecar on next contact (idempotent by span id). Kept minimal — not a durability layer.
+- **Optional thin spool** (`~/.weave-agent-adapter/spool/<session>.jsonl`) drained by the sidecar on next contact (idempotent by span id). Kept minimal — not a durability layer.
 
 ## Versioning
 
