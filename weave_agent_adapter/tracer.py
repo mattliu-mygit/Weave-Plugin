@@ -22,6 +22,7 @@ from .core.model import (
 )
 from .core.sink import Sink
 from .profile import Profile
+from .redact import Redactor
 
 NS = "weave_agent_adapter"
 
@@ -31,10 +32,11 @@ def _id() -> str:
 
 
 class Tracer:
-    def __init__(self, profile: Profile, project: str, sink: Sink) -> None:
+    def __init__(self, profile: Profile, project: str, sink: Sink, redactor: Redactor = None) -> None:
         self.profile = profile
         self.project = project
         self.sink = sink
+        self.redactor = redactor or Redactor()
         self.sessions: dict[str, Session] = {}
 
     def handle(self, wire) -> None:
@@ -88,11 +90,12 @@ class Tracer:
         s = self.sessions.get(sid)
         if not s:
             return
+        prompt = self.redactor.scrub(f.get("prompt"), "prompt")
         if s.current_turn and s.current_turn.open:
             # a user message mid-turn is steering, not a new turn
-            self._emit_steering(s, at, SteeringKind.INTERJECTION, text=f.get("prompt"))
+            self._emit_steering(s, at, SteeringKind.INTERJECTION, text=prompt)
             return
-        t = Turn(call_id=_id(), index=s.turn_count, started_at=at, input_text=f.get("prompt"))
+        t = Turn(call_id=_id(), index=s.turn_count, started_at=at, input_text=prompt)
         s.current_turn = t
         s.turn_count += 1
         self.sink.start(WeaveCall(
@@ -134,7 +137,7 @@ class Tracer:
         key = f.get("tool_use_id") or f"_synth:{f.get('tool_name')}:{len(t.tool_order)}"
         tc = ToolCall(correlation_key=key, call_id=_id(),
                       tool_name=f.get("tool_name", "tool"),
-                      tool_input=f.get("tool_input") or {}, started_at=at)
+                      tool_input=self.redactor.scrub(f.get("tool_input") or {}), started_at=at)
         t.tool_calls[key] = tc
         t.tool_order.append(key)
         attrs = {"kind": "tool", "tool_name": tc.tool_name, "harness": self.profile.name}
@@ -193,8 +196,8 @@ class Tracer:
             tc.permission.decision = Decision.ALLOW
         tc.status = ToolStatus.OK if ok else ToolStatus.ERROR
         tc.ended_at = at
-        tc.output = f.get("tool_output") if ok else None
-        tc.error = None if ok else (f.get("tool_output") or "error")
+        tc.output = self.redactor.scrub(f.get("tool_output")) if ok else None
+        tc.error = None if ok else self.redactor.scrub(f.get("tool_output") or "error")
         self.sink.end(WeaveCall(
             id=tc.call_id, trace_id=s.trace_id, op_name=f"{NS}.tool.{tc.tool_name}",
             started_at=tc.started_at, ended_at=at, output=tc.output, exception=tc.error,

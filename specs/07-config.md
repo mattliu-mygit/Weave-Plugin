@@ -29,10 +29,12 @@ Only the **sidecar** reads `config.toml`. The **hook stays parse-free** (spec 03
 
 ## Redaction
 
-Two layers, both in the sidecar (spec 06 sends already-redacted data):
+Done by our own `Redactor` (`redact.py`) in the **tracer**, before any sink — so Weave, debug, and every sink get already-redacted data. (We can't lean on Weave's `redact_keys`/`redact_pii`: those hook the `@weave.op` path, and we use the low-level `call_start`/`call_end` API.) Default-on. Two rules:
 
-1. **Weave built-ins:** `add_redact_key()` for `redaction.redact_keys`; `redact_pii`/`redact_pii_fields` via `weave.init(settings=…)`.
-2. **Our postprocess:** scrub `tool_input`/`tool_output`/`prompt` (secret-shaped regex, per-tool off-switch) before the value reaches a call.
+1. **Key denylist** — a dict key containing `api_key`, `authorization`, `token`, `secret`, `password`, … → the whole value becomes `[REDACTED]`.
+2. **Secret-shaped patterns** — scrub substrings matching known key shapes (`sk-…`, `wandb_v1_…`, `gh*_…`, AWS `AKIA…`, JWTs, PEM blocks) anywhere in strings.
+
+Applied to `tool_input`, `tool_output`, and the prompt. Deny keys/enabled are configurable (`redaction.*`).
 
 ## Sampling
 
