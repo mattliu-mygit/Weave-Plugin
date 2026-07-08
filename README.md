@@ -59,15 +59,6 @@ Adopters write **zero** lines of code: installing the plugin registers everythin
 
 See [DESIGN.md](DESIGN.md) for the full design, [specs/](specs/) for detailed specs, and [examples/](examples/) for copy-pasteable config.
 
-## Roadmap
-
-- [x] **M0** — capture mode; verified against a real Claude Code session (`tool_use_id` confirmed as the per-call correlation id). Permission-event payloads still to capture interactively.
-- [x] **M1** — sidecar + core trace tree (session / turn / tool)
-- [x] **M2** — permission / approval / rejection / steering
-- [x] **M3** — redaction, sampling, config
-- [x] **M4** — subagents, compaction, hardening
-- [x] **M5** — plugin + pip packaging
-
 ## License
 
 See [LICENSE](LICENSE).

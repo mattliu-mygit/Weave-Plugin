@@ -28,6 +28,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/mattliu-mygit/Weave-Agent-Adapter"
 Repository = "https://github.com/mattliu-mygit/Weave-Agent-Adapter"
+Issues = "https://github.com/mattliu-mygit/Weave-Agent-Adapter/issues"
 
 # The hook path is stdlib-only; only the sidecar needs Weave.
 [project.optional-dependencies]
