@@ -340,9 +340,10 @@ class Tracer:
             return
         t = s.current_turn
         aid = f.get("agent_id")
+        # match strictly by agent_id. No LIFO fallback: a background SubagentStop
+        # (different agent_id) would otherwise pop and close a real subagent early,
+        # splitting its tools across two spans.
         rec = t.subagents.pop(aid, None) if aid else None
-        if rec is None and t.subagents:
-            aid, rec = t.subagents.popitem()      # no id match: close most-recent (LIFO)
         if rec is None and not f.get("agent_type"):
             # a SubagentStop we never tracked and with no agent_type is Claude Code's
             # own background agent (prompt-suggestion / title generation), not a user

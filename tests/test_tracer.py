@@ -130,6 +130,30 @@ def test_subagent_stop_annotation():
     assert end_of(sink, agent.id).output is None
 
 
+def test_background_stop_does_not_steal_real_subagent():
+    # a background SubagentStop (different agent_id, no agent_type) must not close
+    # the real tracked subagent; all its tools stay under one span.
+    tr, sink = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("SubagentStart", {"session_id": SID, "agent_id": "g1", "agent_type": "general-purpose"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "a",
+                        "agent_id": "g1", "agent_type": "general-purpose"}),
+        ("PostToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "a",
+                         "agent_id": "g1", "tool_response": {}}),
+        ("SubagentStop", {"session_id": SID, "agent_id": "bg99"}),   # background, no type
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "b",
+                        "agent_id": "g1", "agent_type": "general-purpose"}),
+        ("PostToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "b",
+                         "agent_id": "g1", "tool_response": {}}),
+        ("SubagentStop", {"session_id": SID, "agent_id": "g1", "agent_type": "general-purpose"}),
+    ])
+    agents = [c for c in starts(sink) if c.op_name == f"{NS}.agent.general-purpose"]
+    assert len(agents) == 1                                  # exactly one subagent span
+    bashes = [c for c in starts(sink) if c.op_name == f"{NS}.tool.Bash"]
+    assert all(b.parent_id == agents[0].id for b in bashes)  # both tools under it
+
+
 def test_background_subagent_stop_is_ignored():
     # Claude Code fires SubagentStop for its own background agents (prompt
     # suggestions, title gen) with no agent_type; those must not create a span.
