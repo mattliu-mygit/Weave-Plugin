@@ -87,6 +87,8 @@ class Turn:
     compactions: list = field(default_factory=list)  # (at, trigger)
     subagents: dict = field(default_factory=dict)    # agent_id -> subagent record
     chat_calls: list = field(default_factory=list)   # per-LLM-call records (enrichment)
+    git_branch: Optional[str] = None        # from transcript rows (enrichment)
+    effort_level: Optional[str] = None      # harness reasoning-effort setting
     ended_at: Optional[float] = None
     incomplete: bool = False                # closed by sweep, not by the harness
     emitted: bool = False                   # handed to turn emitters
@@ -103,5 +105,6 @@ class Session:
     cwd: Optional[str] = None
     transcript: Optional[str] = None        # transcript path; read once for the thread id
     thread_id: Optional[str] = None         # conversation id (fork-stable)
+    config_version: Optional[str] = None    # config-surface fingerprint (A/B key)
     current_turn: Optional[Turn] = None
     turn_count: int = 0

@@ -41,10 +41,12 @@ class Profile:
     registration: dict
     thread: dict = None      # [thread]: how to derive the conversation id
     enrich: dict = None      # [enrich]: named turn-enrichment strategy (LLM-call internals)
+    config_surface: dict = None   # [config_surface]: artifact paths hashed into config_version
 
     def __post_init__(self):
         self.thread = self.thread or {}
         self.enrich = self.enrich or {}
+        self.config_surface = self.config_surface or {}
 
     def canonical_event(self, native_event: str) -> Optional[str]:
         return self.events.get(native_event)
@@ -72,6 +74,7 @@ class Profile:
             registration=dict(d.get("registration", {})),
             thread=dict(d.get("thread", {})),
             enrich=dict(d.get("enrich", {})),
+            config_surface=dict(d.get("config_surface", {})),
         )
 
 

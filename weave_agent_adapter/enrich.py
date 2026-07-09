@@ -48,6 +48,7 @@ class ClaudeTranscriptEnricher:
         prev_ts = None
         by_id: dict[str, dict] = {}
         no_id: list[dict] = []
+        branch = None
         try:
             with open(s.transcript) as fh:
                 for line in fh:
@@ -61,6 +62,8 @@ class ClaudeTranscriptEnricher:
                     if not isinstance(r, dict):
                         continue
                     ts = _epoch(r.get("timestamp") or "")
+                    if ts is not None and lo <= ts <= hi and r.get("gitBranch"):
+                        branch = r["gitBranch"]           # last in-window value wins
                     if r.get("type") == "assistant" and not r.get("isSidechain") and ts is not None:
                         if lo <= ts <= hi:
                             msg = r.get("message") or {}
@@ -78,6 +81,8 @@ class ClaudeTranscriptEnricher:
             pass
         t.chat_calls.extend(no_id)
         t.chat_calls.extend(by_id.values())
+        if branch:
+            t.git_branch = branch
 
     def _record(self, msg, usage, prev_ts, ts, t: Turn) -> dict:
         text = " ".join(

@@ -118,6 +118,41 @@ def test_message_id_dedup_prevents_token_inflation(tmp_path):
     assert total_in == 1200 + 1400                       # no inflation
 
 
+def test_git_branch_from_transcript(tmp_path):
+    # gitBranch rides on transcript rows; the last in-window value wins
+    tp = _transcript(tmp_path, [
+        {"type": "user", "timestamp": _iso(1001.2), "gitBranch": "main"},
+        {"type": "assistant", "timestamp": _iso(1001.8), "isSidechain": False,
+         "gitBranch": "feature/x",
+         "message": {"model": "m", "usage": {"input_tokens": 1},
+                     "content": [{"type": "text", "text": "ok"}]}},
+        {"type": "user", "timestamp": _iso(1900.0), "gitBranch": "other"},  # out of window
+    ])
+    tr, turns = run([
+        ("SessionStart", {"session_id": SID, "transcript_path": tp}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p", "transcript_path": tp}),
+        ("Stop", {"session_id": SID}),
+        ("SessionEnd", {"session_id": SID}),
+    ])
+    (node, _), = turns
+    assert node["attributes"]["weave_agent_adapter.git_branch"] == "feature/x"
+
+
+def test_no_git_branch_no_attr(tmp_path):
+    tp = _transcript(tmp_path, [
+        {"type": "assistant", "timestamp": _iso(1001.5), "isSidechain": False,
+         "message": {"model": "m", "usage": {"input_tokens": 1}, "content": []}},
+    ])
+    tr, turns = run([
+        ("SessionStart", {"session_id": SID, "transcript_path": tp}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p", "transcript_path": tp}),
+        ("Stop", {"session_id": SID}),
+        ("SessionEnd", {"session_id": SID}),
+    ])
+    (node, _), = turns
+    assert "weave_agent_adapter.git_branch" not in node["attributes"]
+
+
 def test_enricher_survives_non_dict_json_line(tmp_path):
     tp = _transcript(tmp_path, [
         "just a string",

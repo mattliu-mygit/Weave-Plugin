@@ -36,6 +36,7 @@ agent_type         = "agent_type"          # SubagentStop, e.g. "Explore"
 agent_output       = "last_assistant_message"   # SubagentStop
 denial_reason      = "denial_reason"       # PermissionDenied (provisional, not yet captured)
 compaction_trigger = "trigger"             # PreCompact (provisional, not yet captured)
+effort_level       = "effort.level"        # reasoning effort, e.g. "high" / "xhigh"
 
 [thread]
 source     = "transcript_root"             # conversation id = first message's id in the transcript
@@ -44,6 +45,22 @@ id_key     = "uuid"                        # the row field to use as the convers
 
 [enrich]
 source = "claude-transcript"               # per-LLM-call chat spans + token usage from the transcript
+
+[config_surface]
+# User-editable context artifacts that shape agent behavior, hashed into
+# weave_agent_adapter.config_version — the A/B cohort key for evaluating
+# config changes. {cwd_slug} follows ~/.claude/projects naming ("/" -> "-").
+paths = [
+  "~/.claude/CLAUDE.md",
+  "~/.claude/skills",
+  "~/.claude/commands",
+  "~/.claude/agents",
+  "~/.claude/projects/{cwd_slug}/memory",
+  "{cwd}/CLAUDE.md",
+  "{cwd}/.claude/skills",
+  "{cwd}/.claude/commands",
+  "{cwd}/.claude/agents",
+]
 
 [registration]
 user_path  = "~/.claude/settings.json"     # install (default scope)

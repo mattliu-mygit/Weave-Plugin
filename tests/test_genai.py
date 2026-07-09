@@ -119,6 +119,89 @@ def test_bare_project_without_entity_stays_bare():
     assert pid == "my-proj"
 
 
+def test_turn_counters_stamped_and_filterable():
+    # friction counters live on the turn root as ints (0 included) so the
+    # signals/spans query layer can filter on them — span events aren't filterable
+    tr, turns = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "do it"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t1"}),
+        ("PermissionDenied", {"session_id": SID, "tool_use_id": "t1",
+                              "denial_reason": "no"}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "try X instead"}),  # steering
+        ("PreToolUse", {"session_id": SID, "tool_name": "Bash", "tool_use_id": "t2"}),
+        ("PostToolUseFailure", {"session_id": SID, "tool_use_id": "t2",
+                                "tool_response": "boom"}),
+        ("PreToolUse", {"session_id": SID, "tool_name": "Read", "tool_use_id": "t3"}),
+        ("PostToolUse", {"session_id": SID, "tool_use_id": "t3", "tool_response": {}}),
+        ("Stop", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "clean turn"}),
+        ("Stop", {"session_id": SID}),
+        ("SessionEnd", {"session_id": SID}),
+    ])
+    (t1, _), (t2, _) = turns
+    a1 = t1["attributes"]
+    assert a1[f"{NS}.steering_count"] == 1
+    assert a1[f"{NS}.denial_count"] == 1
+    assert a1[f"{NS}.tool_error_count"] == 1
+    a2 = t2["attributes"]
+    assert a2[f"{NS}.steering_count"] == 0                   # present even when zero
+    assert a2[f"{NS}.denial_count"] == 0
+    assert a2[f"{NS}.tool_error_count"] == 0
+
+
+def test_effort_level_stamped_from_payload():
+    tr, turns = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p",
+                              "effort": {"level": "xhigh"}}),
+        ("Stop", {"session_id": SID}),
+        ("SessionEnd", {"session_id": SID}),
+    ])
+    (t, _), = turns
+    assert t["attributes"][f"{NS}.effort_level"] == "xhigh"
+
+
+def test_config_version_stamped_on_every_turn(tmp_path):
+    # the A/B key: profile declares which artifacts form the config surface;
+    # the fingerprint is computed per session and stamped on each turn root
+    claude_md = tmp_path / "CLAUDE.md"
+    claude_md.write_text("be concise")
+    prof = Profile(
+        name="thirdparty", adapter="command-hook",
+        events={"SessionStart": "session_start", "UserPromptSubmit": "turn_start",
+                "Stop": "turn_end", "SessionEnd": "session_end"},
+        fields={"session_id": "session_id", "prompt": "prompt"},
+        registration={}, config_surface={"paths": [str(claude_md)]},
+    )
+    nodes = []
+    em = GenAITurnEmitter(default_entity="ent", emit=lambda n, p: nodes.append(n))
+    tr = Tracer(prof, "p", turn_emitters=[em])
+    for i, (name, p) in enumerate([
+            ("SessionStart", {"session_id": "s"}),
+            ("UserPromptSubmit", {"session_id": "s", "prompt": "one"}),
+            ("Stop", {"session_id": "s"}),
+            ("UserPromptSubmit", {"session_id": "s", "prompt": "two"}),
+            ("Stop", {"session_id": "s"}),
+            ("SessionEnd", {"session_id": "s"})]):
+        tr.handle(WireEvent(1, "thirdparty", name, 1.0 + i, p, 1))
+    assert len(nodes) == 2
+    from weave_agent_adapter.config_surface import config_version
+    expected = config_version([str(claude_md)])
+    assert all(n["attributes"][f"{NS}.config_version"] == expected for n in nodes)
+
+
+def test_no_config_surface_means_no_attr():
+    tr, turns = run([
+        ("SessionStart", {"session_id": SID}),
+        ("UserPromptSubmit", {"session_id": SID, "prompt": "p"}),
+        ("Stop", {"session_id": SID}),
+    ], harness="codex")
+    tr.sweep(now=10_000.0, ttl=1.0)
+    (t, _), = turns
+    assert f"{NS}.config_version" not in t["attributes"]
+
+
 def test_thread_id_from_profile_field_source():
     # a harness that exposes a conversation id directly in the payload: profile
     # declares thread.source="field"; no transcript read, no Claude assumptions.

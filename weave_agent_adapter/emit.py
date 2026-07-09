@@ -84,6 +84,19 @@ class GenAITurnEmitter:
             attrs["gen_ai.completion.0.content"] = str(t.output_text)
         if t.incomplete:
             attrs[f"{NS}.incomplete"] = "true"   # closed by sweep, not by the harness
+        # friction counters: always stamped (zeros included) so the spans query
+        # layer can filter on them — span events aren't filterable
+        attrs[f"{NS}.steering_count"] = len(t.steering)
+        attrs[f"{NS}.denial_count"] = sum(
+            1 for tc in t.tool_calls.values() if tc.status == ToolStatus.REJECTED)
+        attrs[f"{NS}.tool_error_count"] = sum(
+            1 for tc in t.tool_calls.values() if tc.status == ToolStatus.ERROR)
+        if s.config_version:
+            attrs[f"{NS}.config_version"] = s.config_version   # A/B cohort key
+        if t.git_branch:
+            attrs[f"{NS}.git_branch"] = str(t.git_branch)
+        if t.effort_level:
+            attrs[f"{NS}.effort_level"] = str(t.effort_level)
 
         children = [self._subagent_node(rec, t) for rec in t.subagents.values()]
         children += [self._tool_node(tc) for tc in self._tools_of(t, agent_id=None)]

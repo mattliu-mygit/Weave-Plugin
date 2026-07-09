@@ -22,6 +22,7 @@ import json
 import os
 import re
 
+from .config_surface import config_version
 from .core.model import (
     Decision, Permission, Session, Steering, SteeringKind, ToolCall, ToolStatus, Turn,
 )
@@ -101,6 +102,12 @@ class Tracer:
         )
         if self.profile.thread.get("source") == "field":
             s.thread_id = f.get(self.profile.thread.get("id_field"))
+        paths = self.profile.config_surface.get("paths")
+        if paths:
+            try:
+                s.config_version = config_version(paths, cwd=cwd)
+            except Exception:
+                pass                          # fingerprinting must never break tracing
         self.sessions[sid] = s
 
     def _on_session_end(self, sid, f, at) -> None:
@@ -141,7 +148,8 @@ class Tracer:
                 Steering(kind=SteeringKind.INTERJECTION, at=at, text=prompt))
             return
         self._emit_pending_turn(s)            # previous turn is final once the next begins
-        s.current_turn = Turn(index=s.turn_count, started_at=at, input_text=prompt)
+        s.current_turn = Turn(index=s.turn_count, started_at=at, input_text=prompt,
+                              effort_level=f.get("effort_level"))
         s.turn_count += 1
 
     def _on_turn_end(self, sid, f, at) -> None:
